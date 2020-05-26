@@ -2,6 +2,8 @@ import 'package:scoped_model/scoped_model.dart';
 
 import '../models/product.dart';
 import '../models/user.dart';
+import 'dart:convert';
+import 'package:http/http.dart' as http;
 
 class ConnectedProductsModel extends Model {
   List<Product> _products = [];
@@ -10,15 +12,28 @@ class ConnectedProductsModel extends Model {
 
   void addProduct(
       String title, String description, String image, double price) {
-    final Product newProduct = Product(
-        title: title,
-        description: description,
-        image: image,
-        price: price,
-        userEmail: _authenticatedUser.email,
-        userId: _authenticatedUser.id);
-    _products.add(newProduct);
-    notifyListeners();
+    final Map<String, dynamic> product = {
+      "title": title,
+      "description": description,
+      "image":
+          "https://m.economictimes.com/thumb/msid-70545996,width-1200,height-900,resizemode-4,imgsize-679342/chocolate2.jpg",
+      "price": price
+    };
+    http
+        .post("https://foodapp-5d2a1.firebaseio.com/products.json",
+            body: json.encode(product))
+        .then((value) {
+      final Map<String, dynamic> data = json.decode(value.body);
+      _products.add(Product(
+          id: data["name"],
+          title: title,
+          description: description,
+          image: image,
+          price: price,
+          userEmail: _authenticatedUser.email,
+          userId: _authenticatedUser.id));
+      notifyListeners();
+    });
   }
 }
 
@@ -69,6 +84,14 @@ mixin ProductsModel on ConnectedProductsModel {
     notifyListeners();
   }
 
+  void fetchProducts() {
+    http
+        .get("https://foodapp-5d2a1.firebaseio.com/products.json")
+        .then((value) {
+          print(value.body);
+        });
+  }
+
   void toggleProductFavoriteStatus() {
     final bool isCurrentlyFavorite = selectedProduct.isFavorite;
     final bool newFavoriteStatus = !isCurrentlyFavorite;
@@ -96,7 +119,8 @@ mixin ProductsModel on ConnectedProductsModel {
 }
 
 mixin UserModel on ConnectedProductsModel {
-    void login(String email, String password) {
-    _authenticatedUser = User(id: 'fdalsdfasf', email: email, password: password);
+  void login(String email, String password) {
+    _authenticatedUser =
+        User(id: 'fdalsdfasf', email: email, password: password);
   }
 }
